@@ -4,8 +4,7 @@
 
 ```bash
 sudo pacman -Syu
-sudo apt install -y build-essential gdb-multiarch \
-    qemu-system-misc gcc-riscv64-linux-gnu binutils-riscv64-linux-gnu
+sudo pacman -S --needed base-devel qemu-system-riscv riscv64-elf-gcc riscv64-elf-binutils gdb
 ```
 
 ## Build and run
