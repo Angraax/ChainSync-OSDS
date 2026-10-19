@@ -1,0 +1,2 @@
+CompileFlags: 
+Add: [-I., -nostdinc, -fno-builtin, -fno-common, -nostdlib]
