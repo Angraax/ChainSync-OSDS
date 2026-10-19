@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChainSync | Replicated Process Synchronization & Block Explorer</title>
+  <meta name="description" content="ChainSync: Replacing classical semaphores with blockchain consensus and state machine replication.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand-section">
+        <div class="logo-badge">
+          <div class="pulse-indicator"></div>
+          <span class="logo-icon">⛓️</span>
+        </div>
+        <div>
+          <h1 class="brand-title">ChainSync</h1>
+          <p class="brand-subtitle">Replicated Semaphore State Machine & Ledger Explorer</p>
+        </div>
+      </div>
+
+      <div class="status-metrics">
+        <div class="metric-chip">
+          <span class="metric-label">Node Status</span>
+          <span class="metric-val text-success" id="cluster-status">ACTIVE</span>
+        </div>
+        <div class="metric-chip">
+          <span class="metric-label">Block Height</span>
+          <span class="metric-val text-primary" id="block-height">#0</span>
+        </div>
+        <div class="metric-chip">
+          <span class="metric-label">Mempool Size</span>
+          <span class="metric-val text-warning" id="mempool-size">0 txs</span>
+        </div>
+        <div class="metric-chip">
+          <span class="metric-label">Ledger Integrity</span>
+          <span class="metric-val text-success" id="integrity-status">VERIFIED</span>
+        </div>
+        <button id="btn-produce-block" class="btn btn-primary glow-btn" onclick="produceBlock()">
+          <span>🔨 Propose & Commit Block</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Grid -->
+    <main class="dashboard-grid">
+      <!-- Left Column: Semaphores & Interactive Client -->
+      <section class="grid-col left-col">
+        <!-- Live Semaphores -->
+        <div class="glass-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <span class="card-icon">🚦</span>
+              <h2>Active Semaphores & Mutexes</h2>
+            </div>
+            <span class="badge" id="sem-count-badge">0 Active</span>
+          </div>
+          <p class="card-desc">Synchronized distributed state machine showing current holders, lease countdowns, and FIFO queues.</p>
+          <div id="semaphores-container" class="semaphores-list">
+            <div class="loading-spinner">Loading semaphore states...</div>
+          </div>
+        </div>
+
+        <!-- Interactive Transaction Dispatcher -->
+        <div class="glass-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <span class="card-icon">⚡</span>
+              <h2>Transaction Dispatcher</h2>
+            </div>
+            <span class="badge badge-accent">Client SDK Ingress</span>
+          </div>
+          <p class="card-desc">Sign and submit cryptographic transactions into the mempool.</p>
+
+          <form id="tx-form" onsubmit="handleTxSubmit(event)" class="tx-form">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="tx-type">Transaction Type</label>
+                <select id="tx-type" onchange="onTxTypeChange()" class="form-control">
+                  <option value="ACQUIRE">ACQUIRE (wait)</option>
+                  <option value="RELEASE">RELEASE (signal)</option>
+                  <option value="RENEW">RENEW (extend lease)</option>
+                  <option value="CREATE">CREATE (new semaphore)</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="tx-semaphore">Semaphore Name</label>
+                <input type="text" id="tx-semaphore" class="form-control" value="db-account-mutex" required>
+              </div>
+            </div>
+
+            <div class="form-row" id="row-dynamic-fields">
+              <div class="form-group" id="grp-lease">
+                <label for="tx-lease">Lease Duration (ms)</label>
+                <input type="number" id="tx-lease" class="form-control" value="8000" min="1000" step="500">
+              </div>
+
+              <div class="form-group hidden" id="grp-capacity">
+                <label for="tx-capacity">Capacity (1=Mutex, N=Counting)</label>
+                <input type="number" id="tx-capacity" class="form-control" value="1" min="1">
+              </div>
+
+              <div class="form-group hidden" id="grp-token">
+                <label for="tx-token">Fencing Token</label>
+                <input type="number" id="tx-token" class="form-control" placeholder="e.g. 1">
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn btn-accent" id="btn-submit-tx">
+                <span>Sign & Submit to Mempool</span>
+              </button>
+              <button type="button" class="btn btn-secondary" onclick="quickAcquireAndBlock()">
+                <span>Acquire & Commit Instant</span>
+              </button>
+            </div>
+            <div id="tx-feedback" class="feedback-msg"></div>
+          </form>
+        </div>
+
+        <!-- Protected Resource with Fencing & Zombie Prevention (Task T5) -->
+        <div class="glass-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <span class="card-icon">🛡️</span>
+              <h2>Protected Storage & Fencing Demo</h2>
+            </div>
+            <span class="badge badge-warning">Zombie Defense (T5)</span>
+          </div>
+          <p class="card-desc">Storage service that enforces monotonic fencing tokens. Tests rejecting zombie writes from expired holders.</p>
+
+          <div class="storage-state-box" id="storage-state-display">
+            <!-- Rendered by JS -->
+          </div>
+
+          <div class="fenced-write-bar">
+            <input type="text" id="fenced-key" class="form-control small" value="account:42" placeholder="Key">
+            <input type="number" id="fenced-val" class="form-control small" value="1800" placeholder="New Balance">
+            <input type="number" id="fenced-token" class="form-control small" placeholder="Fencing Token" required>
+            <button class="btn btn-sm btn-primary" onclick="submitFencedWrite()">Write</button>
+            <button class="btn btn-sm btn-danger" onclick="simulateZombieWrite()">Simulate Zombie Write</button>
+          </div>
+          <div id="fenced-feedback" class="feedback-msg"></div>
+        </div>
+      </section>
+
+      <!-- Right Column: Ledger Explorer & Merkle Proof Tool -->
+      <section class="grid-col right-col">
+        <!-- Merkle Proof Verifier -->
+        <div class="glass-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <span class="card-icon">🌲</span>
+              <h2>Cryptographic Merkle Proof Verifier</h2>
+            </div>
+            <span class="badge badge-success">Audit & Non-Repudiation</span>
+          </div>
+          <p class="card-desc">Cryptographically verify that a transaction is irreversibly sealed inside a block's Merkle root.</p>
+
+          <div class="merkle-search-bar">
+            <input type="number" id="proof-height" class="form-control small" placeholder="Block #" value="1">
+            <input type="text" id="proof-tx-hash" class="form-control" placeholder="Transaction Hash (hex)">
+            <button class="btn btn-secondary" onclick="verifyMerkleProof()">Verify Proof</button>
+          </div>
+
+          <div id="merkle-proof-result" class="merkle-result-box">
+            <span class="text-muted">Select or enter a transaction from below to verify its Merkle path.</span>
+          </div>
+        </div>
+
+        <!-- Block Explorer -->
+        <div class="glass-card">
+          <div class="card-header">
+            <div class="card-title-group">
+              <span class="card-icon">📦</span>
+              <h2>Blockchain Ledger Explorer</h2>
+            </div>
+            <span class="badge" id="block-count-badge">0 Blocks</span>
+          </div>
+          <p class="card-desc">Append-only, hash-linked cryptographic chain of committed blocks.</p>
+
+          <div id="blocks-container" class="blocks-list">
+            <div class="loading-spinner">Loading blocks...</div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <div>ChainSync Core (Tasks T1-T8) &bull; Built by Tijay &bull; Deterministic Replicated State Machine</div>
+      <div class="footer-links">
+        <a href="#semaphores">Semaphores</a>
+        <a href="#ledger">Ledger</a>
+        <a href="#merkle">Merkle Tree</a>
+      </div>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

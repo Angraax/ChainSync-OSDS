@@ -1,0 +1,27 @@
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Environments
+.venv/
+env/
+venv/
+ENV/
+
+# OS generated
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+
+# Runtime transient test data (keep data dir, ignore generated logs & ledger runs)
+data/*.jsonl
+!data/.gitkeep
+*.log

@@ -1,0 +1,89 @@
+syntax = "proto3";
+
+package chainsync;
+
+option go_package = "github.com/chainsync/proto";
+
+// Supported transaction operations
+enum TransactionType {
+  TX_UNKNOWN = 0;
+  CREATE = 1;
+  ACQUIRE = 2;
+  RELEASE = 3;
+  RENEW = 4;
+  TICK = 5;
+}
+
+// Canonical transaction structure submitted by clients or leader (TICK)
+message Transaction {
+  TransactionType type = 1;
+  string semaphore = 2;
+  uint32 capacity = 3;          // Used in CREATE (1 = mutex, N = counting)
+  uint64 lease_ms = 4;          // Duration in ms (ACQUIRE, RENEW)
+  uint64 token = 5;             // Fencing token (RELEASE, RENEW)
+  string request_id = 6;        // Client UUID for idempotency
+  uint64 nonce = 7;             // Monotonic account counter
+  string chain_id = 8;          // Network replay protection
+  string sender = 9;            // Ed25519 public key hex
+  string signature = 10;        // Ed25519 signature hex
+}
+
+// Header committed into the blockchain ledger
+message BlockHeader {
+  uint64 height = 1;
+  string prev_hash = 2;
+  string merkle_root = 3;
+  uint64 timestamp = 4;         // Block time in ms (Consensus Clock)
+  string proposer = 5;          // Proposer validator ID
+}
+
+// Full committed block containing batch of transactions
+message Block {
+  BlockHeader header = 1;
+  repeated Transaction transactions = 2;
+  string block_hash = 3;
+}
+
+// Real-time notification events emitted during apply()
+enum EventType {
+  EV_UNKNOWN = 0;
+  CREATED = 1;
+  GRANTED = 2;
+  QUEUED = 3;
+  RELEASED = 4;
+  RENEWED = 5;
+  EXPIRED = 6;
+  REJECTED = 7;
+}
+
+message Event {
+  EventType event = 1;
+  string semaphore = 2;
+  string holder = 3;
+  uint64 token = 4;
+  uint64 expires_at = 5;
+  uint64 block_height = 6;
+  uint64 timestamp = 7;
+}
+
+// State queries
+message HolderInfo {
+  uint64 token = 1;
+  string owner = 2;
+  uint64 expires_at = 3;
+  string request_id = 4;
+}
+
+message WaitRequest {
+  string owner = 1;
+  string request_id = 2;
+  uint64 lease_ms = 3;
+}
+
+message SemaphoreState {
+  string name = 1;
+  uint32 capacity = 2;
+  map<uint64, HolderInfo> holders = 3;
+  repeated WaitRequest queue = 4;
+  uint64 next_token = 5;
+}
